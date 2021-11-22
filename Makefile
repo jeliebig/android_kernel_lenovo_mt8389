@@ -4,7 +4,7 @@ SUBLEVEL = 5
 EXTRAVERSION =
 NAME = Saber-toothed Squirrel
 
-#Temp hack for mtk modules built with debug by default (thx Dr-Shadow!)
+# Temp hack for mtk modules built with debug by default (thx Dr-Shadow!)
 export TARGET_BUILD_VARIANT = user
 
 # *DOCUMENTATION*

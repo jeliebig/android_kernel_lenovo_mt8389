@@ -56,13 +56,7 @@ static LCD_IF_ID ctrl_if = LCD_IF_PARALLEL_0;
 
 static volatile int direct_link_layer = -1;
 static UINT32 disp_fb_bpp = 32;     ///ARGB8888
-#ifdef MTK_TRIPLE_FRAMEBUFFER_SUPPORT
-static UINT32 disp_fb_pages = 3;     ///TRIPLE buffer
-static BOOL is_page_set = TRUE;
-#else
 static UINT32 disp_fb_pages = 2;     ///double buffer
-static BOOL is_page_set = FALSE;
-#endif
 
 BOOL is_engine_in_suspend_mode = FALSE;
 BOOL is_lcm_in_suspend_mode    = FALSE;
@@ -1055,7 +1049,7 @@ DISP_STATUS DISP_SetBacklight(UINT32 level)
 
 	disp_drv_init_context();
 
-//	LCD_WaitForNotBusy();
+	LCD_WaitForNotBusy();
 	if(lcm_params->type==LCM_TYPE_DSI && lcm_params->dsi.mode == CMD_MODE)
 		DSI_CHECK_RET(DSI_WaitForNotBusy());
 
@@ -1064,10 +1058,16 @@ DISP_STATUS DISP_SetBacklight(UINT32 level)
 		goto End;
 	}
 
+	if(lcm_params->type==LCM_TYPE_DSI && lcm_params->dsi.mode != CMD_MODE)
+		DSI_SetMode(CMD_MODE);
+
     mutex_lock(&LcmCmdMutex);
 	lcm_drv->set_backlight(level);
-
+	DSI_LP_Reset();
     mutex_unlock(&LcmCmdMutex);
+
+	if(lcm_params->type==LCM_TYPE_DSI && lcm_params->dsi.mode != CMD_MODE)
+		DSI_SetMode(lcm_params->dsi.mode);
 
 End:
 
@@ -2295,31 +2295,9 @@ DISP_STATUS DISP_SetPages(UINT32 pages)
 
 	return DISP_STATUS_OK; 
 }
-extern u32 get_devinfo_with_index(u32 index);
+
 UINT32 DISP_GetPages(void)
 {
-    u32 isHwSupportTripleBuffer = 0;
-
-    if(is_page_set==FALSE)
-    {
-        isHwSupportTripleBuffer = get_devinfo_with_index(3) & 0x00000007;
-
-        if(isHwSupportTripleBuffer == 0x1)
-        {
-        	printk("[K]DISP_GetPages: hw support!\n");
-            disp_fb_pages = 3;
-        }
-        else
-        {
-        	printk("[K]DISP_GetPages: hw not support!\n");
-            disp_fb_pages = 2;
-        }
-
-        is_page_set = TRUE;
-    }
-
-    printk("[K]DISP_GetPages: disp_fb_pages=%d!\n", disp_fb_pages);
-    
     return disp_fb_pages;   // Double Buffers
 }
 
@@ -2495,95 +2473,6 @@ DISP_STATUS DISP_Config_Overlay_to_Memory(unsigned int mva, int enable)
 	return DSI_STATUS_OK;
 }
 
-
-DISP_STATUS DISP_Config_Wfd_Overlay_to_Memory(unsigned int mva, int enable)
-{
-//	int ret = 0;
-
-	if(enable)
-	{
-		MemOutConfig.outFormat = WDMA_OUTPUT_FORMAT_UYVY;///WDMA_OUTPUT_FORMAT_YUY2;
-
-		MemOutConfig.enable = 1;
-		MemOutConfig.dstAddr = mva;
-		MemOutConfig.srcROI.x = 0;
-		MemOutConfig.srcROI.y = 0;
-		MemOutConfig.srcROI.height= DISP_GetScreenHeight();
-		MemOutConfig.srcROI.width= DISP_GetScreenWidth();
-
-#if !defined(MTK_WFD_SUPPORT) && !defined(MTK_HDMI_SUPPORT)
-		mutex_lock(&MemOutSettingMutex);
-		MemOutConfig.dirty = 1;
-		mutex_unlock(&MemOutSettingMutex);
-#endif
-	}
-	else
-	{
-		MemOutConfig.outFormat = WDMA_OUTPUT_FORMAT_UYVY;///WDMA_OUTPUT_FORMAT_YUY2;
-		MemOutConfig.enable = 0;
-		MemOutConfig.dstAddr = mva;
-		MemOutConfig.srcROI.x = 0;
-		MemOutConfig.srcROI.y = 0;
-		MemOutConfig.srcROI.height= DISP_GetScreenHeight();
-		MemOutConfig.srcROI.width= DISP_GetScreenWidth();
-
-//#if !defined(MTK_WFD_SUPPORT) && !defined(MTK_HDMI_SUPPORT)
-		mutex_lock(&MemOutSettingMutex);
-		MemOutConfig.dirty = 1;		
-		mutex_unlock(&MemOutSettingMutex);
-//#endif
-
-		// Wait for reg update.
-		wait_event_interruptible(reg_update_wq, !MemOutConfig.dirty);
-	}
-
-	return DSI_STATUS_OK;
-}	
-
-DISP_STATUS HDMI_Config_Overlay_to_Memory(unsigned int mva, int enable, unsigned int moutFormat)
-{
-    //  int ret = 0;
-
-    //  struct disp_path_config_mem_out_struct mem_out = {0};
-	MemOutConfig.outFormat = moutFormat;
-    if (enable)
-    {
-
-        MemOutConfig.enable = 1;
-        MemOutConfig.dstAddr = mva;
-        MemOutConfig.srcROI.x = 0;
-        MemOutConfig.srcROI.y = 0;
-        MemOutConfig.srcROI.height = DISP_GetScreenHeight();
-        MemOutConfig.srcROI.width = DISP_GetScreenWidth();
-
-#if !defined(MTK_WFD_SUPPORT) && !defined(MTK_HDMI_SUPPORT)
-        mutex_lock(&MemOutSettingMutex);
-        MemOutConfig.dirty = 1;
-        mutex_unlock(&MemOutSettingMutex);
-#endif
-    }
-    else
-    {
-        MemOutConfig.enable = 0;
-        MemOutConfig.dstAddr = mva;
-        MemOutConfig.srcROI.x = 0;
-        MemOutConfig.srcROI.y = 0;
-        MemOutConfig.srcROI.height = DISP_GetScreenHeight();
-        MemOutConfig.srcROI.width = DISP_GetScreenWidth();
-
-        //#if !defined(MTK_WFD_SUPPORT) && !defined(MTK_HDMI_SUPPORT)
-        mutex_lock(&MemOutSettingMutex);
-        MemOutConfig.dirty = 1;
-        mutex_unlock(&MemOutSettingMutex);
-        //#endif
-
-        // Wait for reg update.
-        wait_event_interruptible(reg_update_wq, !MemOutConfig.dirty);
-    }
-
-	printk("HDMI_Config_Overlay_to_Memory done: %d\n",enable);
-    return DSI_STATUS_OK;
-}
 
 DISP_STATUS DISP_Capture_Framebuffer( unsigned int pvbuf, unsigned int bpp, unsigned int is_early_suspended )
 {
@@ -3116,7 +3005,6 @@ BOOL DISP_EsdRecover(void)
 
     up(&sem_update_screen);
 
-	DISP_CHECK_RET(DISP_UpdateScreen(0, 0, DISP_GetScreenWidth(), DISP_GetScreenHeight()));
     return result;
 }
 

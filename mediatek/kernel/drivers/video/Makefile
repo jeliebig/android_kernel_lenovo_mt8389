@@ -5,7 +5,7 @@
 
 obj-$(CONFIG_MTK_FB) += disp_drv_dbi.o              \
          disp_drv_dpi.o                             \
-				 disp_drv_dsi.o															\
+		 disp_drv_dsi.o								\
          disp_drv.o                                 \
          mtkfb_console.o                            \
          disp_assert_layer.o                        \
