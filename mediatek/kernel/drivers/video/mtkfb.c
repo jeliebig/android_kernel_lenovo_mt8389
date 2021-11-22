@@ -3784,6 +3784,11 @@ static void mtkfb_early_suspend(struct early_suspend *h)
     mutex_lock(&ScreenCaptureMutex);
 
     mt65xx_leds_brightness_set(MT65XX_LED_TYPE_LCD, LED_OFF);
+    if (!lcd_fps)
+        msleep(30);
+    else
+        msleep(2*100000/lcd_fps); // Delay 2 frames.
+
     if (down_interruptible(&sem_early_suspend)) {
         printk("[FB Driver] can't get semaphore in mtkfb_early_suspend()\n");
         mutex_unlock(&ScreenCaptureMutex);
@@ -3812,12 +3817,6 @@ static void mtkfb_early_suspend(struct early_suspend *h)
 
     MMProfileLog(MTKFB_MMP_Events.EarlySuspend, MMProfileFlagStart);
 	is_early_suspended = TRUE;
-
-    if (!lcd_fps)
-        msleep(30);
-    else
-        msleep(2*100000/lcd_fps); // Delay 2 frames.
-
     DISP_PrepareSuspend();
     // Wait for disp finished.
     if (wait_event_interruptible_timeout(disp_done_wq, !disp_running, HZ/10) == 0)
