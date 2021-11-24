@@ -116,9 +116,7 @@ $MTK_EMMC_OTP_SUPPORT= $ENV{MTK_EMMC_SUPPORT_OTP};
 $MTK_SHARED_SDCARD=$ENV{MTK_SHARED_SDCARD};
 $TARGET_BUILD_VARIANT=$ENV{TARGET_BUILD_VARIANT};
 
-# MIDHNJ196[S6000] qianxl1, modify partition table name for row & prc project
-#my $PART_TABLE_FILENAME   = "mediatek/build/tools/ptgen/$PLATFORM/partition_table_${PLATFORM}.xls"; # excel file name
-my $PART_TABLE_FILENAME   = "mediatek/build/tools/ptgen/$PLATFORM/partition_table_${PROJECT}.xls"; # excel file name
+my $PART_TABLE_FILENAME   = "mediatek/build/tools/ptgen/$PLATFORM/partition_table_${PLATFORM}.xls"; # excel file name
 my $REGION_TABLE_FILENAME = "mediatek/build/tools/emigen/$PLATFORM/MemoryDeviceList_${PLATFORM}.xls";  #eMMC region information
 my $EMMC_COMPO	= "mediatek/config/$PROJECT/mbr_addr.pl" ;
 
